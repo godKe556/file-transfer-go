@@ -26,6 +26,7 @@
 - 🖥️ **桌面共享** - 实时屏幕共享
 - 🖥️ **目录同步** - 在现代浏览器下支持目录同步
 - 🔗 **连接状态同步** - 实时连接状态UI同步
+- 🔐 **访问密码** - 可选密码保护，未验证无法使用任何功能
 - 🔒 **端到端加密** - 数据传输安全，服务器不存储文件
 - 🖥️ **文件断点传输** - P2P/WS下大文件断点续传支持
 - 📱 **响应式设计** - 完美适配手机、平板、电脑
@@ -72,9 +73,17 @@ git clone https://github.com/MatrixSeven/file-transfer-go.git
 cd file-transfer-go
 docker-compose up -d
 
+# 带访问密码启动（设置 PASSWORD 后，打开页面需先输入密码）
+PASSWORD=my-secret-password docker-compose up -d
+
 # 或者直接使用 Docker 镜像
 docker run -d -p 8080:8080 --name file-transfer-go matrixseven/file-transfer-go:latest
+
+# 直接使用镜像并启用访问密码
+docker run -d -p 8080:8080 -e PASSWORD=my-secret-password --name file-transfer-go matrixseven/file-transfer-go:latest
 ```
+
+> `PASSWORD` 留空或不设置则不启用密码保护，与旧版本行为一致。
 
 ### 方式二：本地构建部署
 
@@ -83,6 +92,10 @@ git clone https://github.com/MatrixSeven/file-transfer-go.git
 cd file-transfer-go
 ./build-fullstack.sh 
 ./dist/file-transfer-go
+
+# 启用访问密码
+./dist/file-transfer-go -password my-secret-password
+# 或者：PASSWORD=my-secret-password ./dist/file-transfer-go
 ```
 
 访问 http://localhost:8080 开始使用
@@ -100,20 +113,35 @@ cd chuan-next && yarn && yarn dev
 ### 部署配置说明
 
 #### 环境变量配置
-- `NODE_ENV`: 运行环境（development/production）
 - `PORT`: 服务端口（默认8080）
-- `GO_BACKEND_URL`: 后端服务地址
+- `PASSWORD`: 访问密码（可选，设置后打开页面需先输入密码，留空则不启用）
+- `FRONTEND_DIR`: 外部前端静态目录（可选，默认使用内嵌前端）
+- `NODE_ENV`: 运行环境（development/production）
+- `GO_BACKEND_URL`: 后端服务地址（开发模式前端代理使用）
+
+#### 命令行参数
+- `-port`: 服务端口，等价于 `PORT`
+- `-password`: 访问密码，等价于 `PASSWORD`
+- `-help`: 查看帮助
 
 #### Docker 配置选项
 ```yaml
 # docker-compose.yml 可配置项
 environment:
-  - NODE_ENV=production
-  - PORT=8080
+  - PASSWORD=my-secret-password   # 访问密码，留空则不启用
 ports:
   - "8080:8080"
 restart: unless-stopped
 ```
+
+#### 访问密码说明
+设置 `PASSWORD` 后：
+
+- 打开页面先显示密码输入框，验证通过后才加载文件传输 / 文字传输 / 桌面共享 / 中继设置等功能
+- 密码校验在服务端完成，通过后下发 httpOnly Cookie 会话（7 天有效），刷新页面无需重复输入
+- 房间创建、房间状态查询以及 WebRTC 信令 / 数据中继 WebSocket 全部需要会话，绕过页面直接调接口同样会被拒绝
+- 同一 IP 连续输错 8 次会锁定 60 秒；密码仅在服务端保存，不会出现在前端代码里
+- 服务重启后会话失效，需要重新输入密码；忘记密码则修改 `PASSWORD` 后重启即可
 
 #### 多架构支持
 项目支持多架构Docker镜像：
