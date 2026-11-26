@@ -177,6 +177,10 @@ func (rs *RelayService) HandleRelayWebSocket(w http.ResponseWriter, r *http.Requ
 	// 连接关闭时清理
 	defer func() {
 		room.mu.Lock()
+		// 判断本连接是否已被同角色的新连接替换（重连场景）
+		replaced := (role == "sender" && room.Sender != nil && room.Sender.ID != client.ID) ||
+			(role == "receiver" && room.Receiver != nil && room.Receiver.ID != client.ID)
+
 		if role == "sender" && room.Sender != nil && room.Sender.ID == client.ID {
 			room.Sender = nil
 		} else if role == "receiver" && room.Receiver != nil && room.Receiver.ID == client.ID {
@@ -195,7 +199,9 @@ func (rs *RelayService) HandleRelayWebSocket(w http.ResponseWriter, r *http.Requ
 		isEmpty := room.Sender == nil && room.Receiver == nil
 		room.mu.Unlock()
 
-		if peer != nil {
+		// 被新连接替换时不要通知对方"已离开"，
+		// 否则对方会误判为对端断线（表现为中继刚建立就提示失败）
+		if peer != nil && !replaced {
 			peer.mu.Lock()
 			peer.Connection.WriteJSON(map[string]interface{}{
 				"type":      "relay-peer-left",
@@ -211,7 +217,7 @@ func (rs *RelayService) HandleRelayWebSocket(w http.ResponseWriter, r *http.Requ
 			log.Printf("[Relay] 清理空的中继房间: %s", code)
 		}
 
-		log.Printf("[Relay] 客户端断开中继: ID=%s, Room=%s", client.ID, code)
+		log.Printf("[Relay] 客户端断开中继: ID=%s, Room=%s, 已被替换=%v", client.ID, code, replaced)
 	}()
 
 	// 消息转发循环 - 带统计日志

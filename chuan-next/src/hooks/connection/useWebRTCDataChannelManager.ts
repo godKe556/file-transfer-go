@@ -303,6 +303,14 @@ export function useWebRTCDataChannelManager(
 
   const switchToRelay = useCallback((relayWs: WebSocket) => {
     console.log('[DataChannel] 🔄 切换到 WS 中继模式');
+    // 切换时关闭上一条（不同的）中继连接，避免遗留旧 socket
+    if (relayWsRef.current && relayWsRef.current !== relayWs) {
+      try {
+        relayWsRef.current.close();
+      } catch {
+        // ignore
+      }
+    }
     relayWsRef.current = relayWs;
   }, []);
 

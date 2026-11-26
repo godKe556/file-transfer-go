@@ -56,6 +56,8 @@ export function useWebRTCConnectionCore(
   const iceDisconnectedTimeout = useRef<NodeJS.Timeout | null>(null);
   // 标记是否已经发送过 relay-request（避免重复发送）
   const relayRequestSent = useRef<boolean>(false);
+  // 中继通道是否已建立（建立后不再重复发起降级，避免多条 WS 互相顶掉）
+  const relayEstablished = useRef<boolean>(false);
   // 通过 ref 避免闭包捕获过时的 initiateRelayFallback
   const initiateRelayFallbackRef = useRef<() => void>(() => {});
   // 全局保底超时：peer-joined 后 N 秒内 isPeerConnected 仍为 false 则降级
@@ -101,6 +103,7 @@ export function useWebRTCConnectionCore(
     }
     isRelayFallbackInProgress.current = false;
     relayRequestSent.current = false;
+    relayEstablished.current = false;
 
     // 在清理 WebSocket 之前发送断开通知
     if (shouldNotifyDisconnect && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -140,6 +143,24 @@ export function useWebRTCConnectionCore(
 
     if (isUserDisconnecting.current) {
       console.log('[ConnectionCore] 用户正在主动断开，跳过中继');
+      return;
+    }
+
+    // 已经建立中继通道：不再新建连接
+    // （否则多条 WS 会互相触发服务端的"关闭同角色旧连接"，表现为中继反复断开）
+    if (relayEstablished.current) {
+      console.log('[ConnectionCore] ⏭️ 中继通道已建立，跳过重复连接');
+      return;
+    }
+
+    // 已存在活跃/正在握手的连接：复用，不重复创建
+    const existingRelayWs = relayWsRef.current;
+    if (
+      existingRelayWs &&
+      (existingRelayWs.readyState === WebSocket.OPEN ||
+        existingRelayWs.readyState === WebSocket.CONNECTING)
+    ) {
+      console.log('[ConnectionCore] ⏭️ 已存在中继连接，跳过重复创建');
       return;
     }
 
@@ -191,6 +212,8 @@ export function useWebRTCConnectionCore(
               if (msg.peer_connected) {
                 console.log('[ConnectionCore] 🎉 双方已通过中继连接，切换传输通道');
                 dataChannelManager.switchToRelay(relayWs);
+                relayEstablished.current = true;
+                relayRequestSent.current = true;
                 isRelayFallbackInProgress.current = false;
                 stateManager.updateState({
                   isConnected: true,
@@ -208,6 +231,8 @@ export function useWebRTCConnectionCore(
             if (msg.type === 'relay-peer-joined') {
               console.log('[ConnectionCore] 🎉 对方已加入中继房间，切换传输通道');
               dataChannelManager.switchToRelay(relayWs);
+              relayEstablished.current = true;
+              relayRequestSent.current = true;
               isRelayFallbackInProgress.current = false;
               stateManager.updateState({
                 isConnected: true,
@@ -252,7 +277,13 @@ export function useWebRTCConnectionCore(
 
       relayWs.onerror = (error) => {
         console.error('[ConnectionCore] ❌ 中继 WebSocket 错误:', error);
+        // 已被新连接替换的旧连接，忽略其错误，避免覆盖当前状态
+        if (relayWsRef.current && relayWsRef.current !== relayWs) {
+          console.log('[ConnectionCore] ⏭️ 忽略旧中继连接的错误');
+          return;
+        }
         isRelayFallbackInProgress.current = false;
+        relayEstablished.current = false;
         relayRequestSent.current = false; // 重置以允许重试
         stateManager.updateState({
           error: 'WS 中继连接失败，请重试',
@@ -263,10 +294,19 @@ export function useWebRTCConnectionCore(
 
       relayWs.onclose = (event) => {
         console.log('[ConnectionCore] 🔌 中继 WebSocket 关闭:', event.code, event.reason);
+
+        // 已被新连接替换的旧连接：静默关闭，不要影响当前状态
+        // （服务端在收到同角色新连接时会主动关闭旧连接，这里必须忽略）
+        if (relayWsRef.current && relayWsRef.current !== relayWs) {
+          console.log('[ConnectionCore] ⏭️ 忽略已被替换的中继连接关闭');
+          return;
+        }
+
         if (relayWsRef.current === relayWs) {
           relayWsRef.current = null;
         }
         isRelayFallbackInProgress.current = false;
+        relayEstablished.current = false;
         relayRequestSent.current = false; // 重置以允许后续重试
         
         // 如果不是用户主动断开，且当前是中继模式
@@ -294,6 +334,12 @@ export function useWebRTCConnectionCore(
 
   // ===== 发起中继降级（通知对方 + 自己连接） =====
   const initiateRelayFallback = useCallback(() => {
+    // 中继已建立：忽略后续 P2P 失败信号，不再重复降级
+    if (relayEstablished.current) {
+      console.log('[ConnectionCore] ⏭️ 中继通道已建立，忽略重复降级');
+      return;
+    }
+
     if (relayRequestSent.current || isRelayFallbackInProgress.current) {
       console.log('[ConnectionCore] ⏭️ 中继降级已发起/进行中，跳过');
       return;
