@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   file-transfer-go:
     # 从当前目录源码构建（包含你自己对前端/后端的改动）
