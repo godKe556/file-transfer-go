@@ -68,15 +68,15 @@
 ### 方式一：Docker 一键部署（推荐）
 
 ```bash
-# 使用 Docker Compose（最简单）
+# 使用 Docker Compose（会基于当前目录源码构建镜像，包含本地改动）
 git clone https://github.com/MatrixSeven/file-transfer-go.git
 cd file-transfer-go
-docker-compose up -d
+docker-compose up -d --build
 
 # 带访问密码启动（设置 PASSWORD 后，打开页面需先输入密码）
-PASSWORD=my-secret-password docker-compose up -d
+PASSWORD=my-secret-password docker-compose up -d --build
 
-# 或者直接使用 Docker 镜像
+# 或者直接使用官方预构建镜像（不包含本地代码改动）
 docker run -d -p 8080:8080 --name file-transfer-go matrixseven/file-transfer-go:latest
 
 # 直接使用镜像并启用访问密码
@@ -84,6 +84,10 @@ docker run -d -p 8080:8080 -e PASSWORD=my-secret-password --name file-transfer-g
 ```
 
 > `PASSWORD` 留空或不设置则不启用密码保护，与旧版本行为一致。
+>
+> `docker-compose.yml` 默认使用 `build: .` 从源码构建（镜像名 `file-transfer-go:local`）。修改代码后必须加 `--build` 才会重新构建，否则仍会复用旧镜像；若想改用官方镜像，把 compose 里的 `build` / `image` 换成 `image: matrixseven/file-transfer-go:latest`。
+>
+> 前端是编译进二进制的静态资源，更新代码后记得强制刷新浏览器（Ctrl/Cmd + Shift + R）。
 
 ### 方式二：本地构建部署
 

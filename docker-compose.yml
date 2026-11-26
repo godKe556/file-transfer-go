@@ -1,24 +1,23 @@
 version: '3.8'
 
 services:
-  # file-transfer-go:
-  #   build: .
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - NODE_ENV=production
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 40s
-  file-transfer-go: 
-    image: matrixseven/file-transfer-go:latest
+  file-transfer-go:
+    # 从当前目录源码构建（包含你自己对前端/后端的改动）
+    # 首次 docker-compose up -d 会自动构建；改动代码后需加 --build 重新构建
+    build: .
+    image: file-transfer-go:local
+    container_name: file-transfer-go
     ports:
       - "8080:8080"
     environment:
       # 访问密码：设置后打开页面需要先输入密码，留空则不启用
       - PASSWORD=${PASSWORD:-}
     restart: unless-stopped
+
+  # ------------------------------------------------------------------
+  # 说明：如果只想跑官方预构建镜像（不含本地代码改动），
+  # 注释掉上面的 build: . 和 image: file-transfer-go:local，
+  # 改成下面这行：
+  #
+  #   image: matrixseven/file-transfer-go:latest
+  # ------------------------------------------------------------------
