@@ -10,15 +10,10 @@ export interface IceServerConfig {
   isDefault?: boolean; // 标记是否为默认服务器
 }
 
+// 默认 ICE 服务器（仅 STUN，不承载数据，只用于建连时发现公网地址）
+// 优先使用国内可达的公共 STUN，提高 P2P 直连成功率、减少服务端中继流量
 const DEFAULT_ICE_SERVERS: IceServerConfig[] = [
   {
-    id: 'easyvoip-stun',
-    urls: 'stun:stun.easyvoip.com:3478',
-    type: 'stun',
-    enabled: true,
-    isDefault: true,
-  },
-   {
     id: 'miwifi-stun',
     urls: 'stun:stun.miwifi.com:3478',
     type: 'stun',
@@ -26,22 +21,30 @@ const DEFAULT_ICE_SERVERS: IceServerConfig[] = [
     isDefault: true,
   },
   {
+    id: 'bilibili-stun',
+    urls: 'stun:stun.chat.bilibili.com:3478',
+    type: 'stun',
+    enabled: true,
+    isDefault: true,
+  },
+  {
+    id: 'hitv-stun',
+    urls: 'stun:stun.hitv.com:3478',
+    type: 'stun',
+    enabled: true,
+    isDefault: true,
+  },
+  {
+    id: 'cdnbye-stun',
+    urls: 'stun:stun.cdnbye.com:3478',
+    type: 'stun',
+    enabled: true,
+    isDefault: true,
+  },
+  {
+    // 海外兜底：国内网络通常不可用，仅在上述全部失效时尝试
     id: 'google-stun-1',
     urls: 'stun:stun.l.google.com:19302',
-    type: 'stun',
-    enabled: true,
-    isDefault: true,
-  },
-  {
-    id: 'google-stun-2',
-    urls: 'stun:stun1.l.google.com:19302',
-    type: 'stun',
-    enabled: true,
-    isDefault: true,
-  },
-  {
-    id: 'twilio-stun',
-    urls: 'stun:global.stun.twilio.com:3478',
     type: 'stun',
     enabled: true,
     isDefault: true,
@@ -194,8 +197,8 @@ export function getIceServersConfig(): RTCIceServer[] {
   if (typeof window === 'undefined') {
     // 服务器端默认配置
     return [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun.miwifi.com:3478' },
+      { urls: 'stun:stun.chat.bilibili.com:3478' },
     ];
   }
 
@@ -244,8 +247,8 @@ export function getIceServersConfig(): RTCIceServer[] {
     console.error('获取ICE服务器配置失败:', error);
     // 发生错误时返回默认配置
     return [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun.miwifi.com:3478' },
+      { urls: 'stun:stun.chat.bilibili.com:3478' },
     ];
   }
 }
