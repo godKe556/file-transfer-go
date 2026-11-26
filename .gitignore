@@ -98,6 +98,9 @@ yarn-error.log*
 # 生产环境文件
 production/
 
+# 本地工具数据（WorkBuddy 记忆/工作区数据）
+.workbuddy/
+
 # 备份文件
 backup/
 
