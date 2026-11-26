@@ -1,3 +1,4 @@
+import AuthGate from '@/components/AuthGate';
 import HomePageWrapper from './HomePageWrapper';
 
 // 静态生成配置
@@ -10,5 +11,9 @@ export const metadata = {
 export const dynamic = 'auto'
 
 export default function Page() {
-  return <HomePageWrapper />;
+  return (
+    <AuthGate>
+      <HomePageWrapper />
+    </AuthGate>
+  );
 }

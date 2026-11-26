@@ -14,6 +14,8 @@ import (
 type Config struct {
 	Port        int
 	FrontendDir string
+	// Password 访问密码，为空表示不启用密码保护
+	Password string
 }
 
 // loadEnvFile 加载环境变量文件
@@ -64,6 +66,7 @@ func showHelp() {
 	fmt.Println("  环境变量:")
 	fmt.Println("    PORT=8080              - 服务器监听端口")
 	fmt.Println("    FRONTEND_DIR=/path     - 外部前端文件目录 (可选)")
+	fmt.Println("    PASSWORD=xxx           - 访问密码 (可选，设置后需输入密码才能使用)")
 	fmt.Println("  命令行参数:")
 	flag.PrintDefaults()
 	fmt.Println("")
@@ -92,6 +95,7 @@ func loadConfig() *Config {
 
 	// 定义命令行参数
 	var port = flag.Int("port", defaultPort, "服务器监听端口 (可通过 PORT 环境变量设置)")
+	var password = flag.String("password", os.Getenv("PASSWORD"), "访问密码，设置后需输入密码才能使用 (可通过 PASSWORD 环境变量设置)")
 	var help = flag.Bool("help", false, "显示帮助信息")
 	flag.Parse()
 
@@ -104,6 +108,7 @@ func loadConfig() *Config {
 	config := &Config{
 		Port:        *port,
 		FrontendDir: os.Getenv("FRONTEND_DIR"),
+		Password:    strings.TrimSpace(*password),
 	}
 
 	return config
@@ -120,5 +125,12 @@ func logConfig(config *Config) {
 		}
 	} else {
 		log.Printf("📦 使用内嵌前端文件")
+	}
+
+	// 访问密码状态
+	if config.Password != "" {
+		log.Printf("🔒 已启用访问密码保护")
+	} else {
+		log.Printf("🔓 未设置访问密码，所有人可直接使用")
 	}
 }

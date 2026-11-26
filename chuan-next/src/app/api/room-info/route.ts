@@ -16,10 +16,14 @@ export async function GET(request: NextRequest) {
 
     console.log('API Route: Getting room info, proxying to:', `${GO_BACKEND_URL}/api/room-info?code=${code}`);
     
+    // 转发浏览器的访问密码 Cookie，供后端鉴权
+    const cookie = request.headers.get('cookie') || '';
+    
     const response = await fetch(`${GO_BACKEND_URL}/api/room-info?code=${code}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        ...(cookie ? { cookie } : {}),
       },
     });
 

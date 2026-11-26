@@ -18,7 +18,7 @@ func main() {
 	logConfig(config)
 
 	// 设置路由
-	router := setupRouter()
+	router := setupRouter(config)
 
 	// 运行服务器（包含启动和优雅关闭）
 	RunServer(config, router)

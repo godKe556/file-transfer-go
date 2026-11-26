@@ -6,11 +6,15 @@ export async function POST(request: NextRequest) {
   try {
     console.log('API Route: Creating room, proxying to:', `${GO_BACKEND_URL}/api/create-room`);
     
+    // 转发浏览器的访问密码 Cookie，供后端鉴权
+    const cookie = request.headers.get('cookie') || '';
+    
     // 不再需要解析和转发请求体，因为后端会忽略它们
     const response = await fetch(`${GO_BACKEND_URL}/api/create-room`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(cookie ? { cookie } : {}),
       },
       // 发送空body即可
       body: JSON.stringify({}),
