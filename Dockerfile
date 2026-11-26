@@ -17,6 +17,9 @@ RUN sed -i "s#dl-cdn.alpinelinux.org#${APK_MIRROR}#g" /etc/apk/repositories \
 
 WORKDIR /app/chuan-next
 
+# 关闭 Next.js 构建期遥测上报（避免额外的外网请求）
+ENV NEXT_TELEMETRY_DISABLED=1
+
 # 复制所有源代码（确保获取最新代码）
 COPY chuan-next/ ./
 
